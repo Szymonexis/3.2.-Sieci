@@ -1,0 +1,320 @@
+ip route adres sieci maska nextHop
+-statyczny routing add to tablica
+
+
+routing vectora odleglosci ("distance vector") (n.p. RIPv1, RIPv2) alg. Belmana-Forda
+
+routing stanu lącza "link-state" (n.p. OSPF) alg. Dijkstry
+
+
+-router ma pamiec RAM && ROM
+-pamiec NVRAM (nie ulotna pamiec), gdie jest przechowywana start configuration (która tak naprawde jest kopia run config z RAM)
+-pamięć FLASH - tam zainstalena OS
+
+
+Configuracja RIP`a wymaga podania wszystkich sieci polaczanych z ruterem
+Mozna zrobic siec "passive", jezeli nie ma sensu do wysylania pakietow RIP do tej sieci, lub nie podawac jej
+
+Jezeli router posiada droge do pewnego routera, ale otrymają od innego routera odpowiedz, że istieje krótsza droga, to zostanie ten rekord zamieniony
+Statyczne wpisy mają wartość 1
+Te sieci co wpisane przez nas 0
+
+RIP 1 nie wysyla info pro maske
+RIP 2 już potrzebuje (przy ruznych maskach lepiej korzystac z tej wersji) 224.0.0.9 - adres multicastowy (wykorzystany only by RIP2)
+ 
+
+Siec - next hop, waga calej drogi
+
+
+
+
+
+
+##############################################################################################################
+IOS - system operacyjny switchej/routerów CISCO
+Przy wlączaniu routera:
+1. POST (Sprawdzenie diagnostyczne) (Znajduje się w ROM`ie) ( Power-On Self-Test )
+2. Ladowanie systemu Operacyjnego, który jest lokalizowany na flash`u (dir flash: - komenda żeby sprawdzić pliky systemu)
+3. Lokalizowanie pliku z konfiguracją startową. (Jeżeli jest to jest w NVRAM)
+    a) Jeżeli jest, to jest ladowany
+    b) jeżeli nie ma to pytanie o dialog konfiguracyjny
+(dir NVRAM:  - sprawdzić)
+
+4. Router wystartuję Router> (Switch>), jeżeli nie ma tego pliku i dialog nie został uruchomiony przez administratora
+To jest tryb użytkownika (Default nazwa urządzenia i znak >)
+W tym trybie dzialają niektóre SHOW`y (SHOW version, show interfaces)
+
+0-----------------------------------------------------0
+Drugi tryb - tryb uprzywilejowany (enable/ [exit])
+'>'  zamieni się na # (Router#/Switch#) 
+Tut też dzialają show`y, ich więcej (show running-config, show ip-route)
+Tutaj dzialają Ping`y, traceroute i t.d., glębiej one już nie bedą dostepne.
+
+0-----------------------------------------------------0
+Następny tryb - configure terminal
+# -> ....(config)#   
+To jest tryb configuracji globalnej (ogólnej)
+[Można podać początek komendy i jeżeli to jest jednoznaczne to ta komenda zadziła anyway]
+W tym trybie konfigurujemy urządzenie jako calość (n.p. hostname nazwe - zmieni nazwe routera (żeby nie było defaultowym))
+
+Można przejść do innych trybów, glębszych (np. konfiguracja haseł)
+
+Konf hasel:
+1. Hasło na konsole: W tybie config wydać komende line console 0 (tryb config-line)
+2. password *cisco*
+3. login (trzeba tak napisać inaczej nie będzie pytał o haslo)
+
+END - wychodzi ze wszystkich trybów do trybu uprzywilejowanego
+EXIT - wogóle wychodzi do trybu użytkownika
+
+HASLO NA TRYB UPRZYWILEJOWANY:
+1. Będąc w trybie conf piszemy  #enable secret *Paról*( hasla nie widać w pliku conf [#show running-config], jest MD5)
+2. enable password *haslo* - ( nie jest zalecane, bo tzyma haslo w pliku conf w postaci otawrtej, niezachowanej)
+Wszystko co my teraz configurujemy jest w RAM (show running-config - to sprawdza), musimy tą konfigurację przerzucić w konf startową
+
+#service password encryption -- szyfrowanie hasla w pliku configuracji 
+
+
+#copy running... startup
+Komenda do kopii conf tymczasowej do startowej configuracji routera (to trzeba robić jeżeli chcemy zachować bieżącą konfiguracji)
+
+
+Haslo na telnet/SSH:
+(config)# line vty 0 15 (Ta komanda ustawia hasło dla wszystkich możliwych polączeń, bo można mieć 16 jednoczesnych polączeń, ta komenda robi haslo dla wszystich polączeń. Zwykłe Admin robi dla zerowego inne hasło, żeby nie było zajęte przez użytkowników)
+#password *haslo*
+#login
+
+(Można ustawiać hasła dla pojedynczych polączeń for ex. line vty 0/1/2/3, lub dla podgrup: line vty 6 15 [od 6-ego do 15-ego])
+Zwykle haslo wyróżnia tyłko dla zerowego portu for Admin, bo nie obieramy jaki jest port. 100% nikt nie polączy z 0 portem, bo nie wie hasło.
+
+Jak nie zdefiniujemy tego line vty nr. portu, to nie możemy się polączyć wogółe!
+
+
+0---------------------------------------------------0
+Configuracja interfaców:
+
+(config)$ interface *name*
+
+(config-if) <- tryb configuracji interface`u
+
+(Na routerzu mósimy zaadresować, na switczu mozna praktycznie nić nie robić na interface`ach)
+
+(config-if)# ip address *ip* *mask* 
+(config-if)# no shutdown
+
+Po default interface wsi leżat (down), no shutdown probuje podniść interface
+
+
+
+ 
+config - router rip 
+version 2
+network .. (wpisanie bezposrednio sieci polączone do routera)
+
+
+Routing
+
+Baza topologii jest jednakowa na wszystkich routerach.
+Na podstawie grafu sieci (bazy topologii) router przy uzyciu algo Dijsktry wyznacza najkrótsze drogi do wszystkich sieci (tablice routingu)
+
+Protokoly routingu dynamicznego opróć tworzenia tablicy routingu musi aktualizować przy zmianach.
+
+Rip rozsyla okresowo (def. 30 sek) update w postaci tablic routingu. Jeżeli nie uzyska tego, to oczekuje kilka braków update`u i w pewnym momencie uzna, że info otrzymana od tego routera musi być wyrzucone z tablicy routingu
+
+W algo state-link nie ma okresowego wysylania info, bo info jest duzo ( co by tworzylo problemy w sieci).
+Będą wysyłane specjalne komunikaty "Hello" okresowo, mogą być wymieniane częściej niż w Distance-Vector, routery mogą szybciej reagować na zmiany w sieci. 
+
+Jeżeli coś się zmienilo, to będą wysyłane update`y, ale tyłko wtedy, gdy router nie będę otrzymywał helo komunikaty.
+
+Link-State na początku generacja dużego obciążenia sieci (dla początkowego ustawienia), ale jest szybsza reakcja na zmiany.
+
+
+
+Distance-Vector - istnieję ograniczenie na liczbęrouterów (Nie większe niż 15 routerów, dla jednej trasy max. length, bo jeżeli koszt jest większy, to wyznaczono, że sieć jest nieosiągalna)
+Dla Link-State nie posiada takiego ograniczenia.
+
+RIP może być tyłko jedna instancja na routerze, OSPF może być kiłka uruchomionych instancji, co może być wykorzystane dla pogrupowania routerów.
+
+
+conf t
+router ospf *1* (numer [1 - 65535] procesu) (na jednym routerze można uruchomić 65535 OSPF)
+W OSPF przy podaniu network`u maska jest podawana w odwrotnym trybie (blanket mask [Инвертирована побитно маска])
+
+network *adress* *mask* area 0
+area - obszar (dla pogrupowania routerów, które będą różnić się tą grupą)
+
+110 - dystans adminisracyjny dla OSPF (ważność, stabiłność protokolu)
+120 - dystans administracyjny dla Rip
+Zatem, jeżeli jeden wpis jest proponowany przez RIP i OSPF, to wpisany zostanie wpis od OSPF, ponieważ admin. koszt jest mniejszy
+
+
+
+Ten dystans pozwala porównywać koszty różnych protokołów, bo drogi nie są do porównywania, bo są wyliczane w inny sposób.
+
+OSPF wylicza koszt poprzez szybkość polączenia ( 10^8/ (prędkość w bitach/sek))
+
+
+W tablice routingu jest wpisywana najlepsza droga, ale jeżeli te drogi mają ten sam koszt, to będzie wpisano 2 drogi i jest raw dropping (algorytm zbalansowania) wysyłania przez jedną dorge i przez inn, po kolei. Ale po defaultu router cacheuje info i bude wysylać jedną drogą, żeby router nie szukał drogi w tablice.
+
+
+
+Одночаасне використаня обох протоколі має сенс, коли деякі роутери не підтримують якійсь з протоколів. 
+Редистрибуція протоколів (в Ripie redystybować OSPF i na odwrót) на роутері, який з'єднує ці роутери поміж собою (посредньому)
+
+router rip
+...
+distribute ospf 
+Треба подавати параметри редистрибуції, які залежать від параметрів сеті. (в rip> redistribute)
+(Перерахування кошту з rip на ospf і наоборот)
+
+Na routerach CISCO istnieję jeszcze jeden protokoł EIGRP (jest implementowany tyłko na cisco routerach)
+On jest najlepszy,jeżeli wszystkie routery cisco, bo buduje odrazy trasy zapasowe.  
+
+
+
+
+
+
+############################################################################################33
+17.03.
+#################################
+Switches
+
+Switcz otrzymuje sygnal, umie odczytać ramkę (mac celu, mac żródła, protokół, Dane, CRC) 
+Dane - pakiet warstwy 3, nie umie tego odczytać.
+
+Przelączniky mają tablicę mac-adressów. 
+W momencie otrzymania ramki, szuka mac-adress w swojej tablicy, jeżeli istnieje, to (tablica maje wszystkie porty skojarzone z mac-adressami),
+znaczy, że to urządzenie jest polączone i wysyła do tego portu, do którego jest polączane urządzenie.
+Jeżeli takiego portu niema, tp switch działa jak koncentrator i wysyła to do wszystkich portów, opróć tego portu skąd przyszedła ramka.
+12-f (40 jedynek - fizyczny broadcast na switchu) - to inna opcja, kiedy to jest wysyłane wszędzie.
+
+Na switchu, komputer jest dodany do tablicy wtedy, gdy komputer chce coś wysłać. Switch analizuje mac-adress żródła, żeby wiedzie, że komputer jest polączony do tego portu
+--Na jednym porcie może być więcej mac-adressów, ałe nie może być jeden mac-adress na wielu portach.
+Switch aktualizuje port komputera, jeżeli ten coś wyśle z nowego portu. Jeżeli na jakiś adress nie idą pakiety 300 sekund, to po prostu komputer jest wyrzucany z tablicy.
+
+
+Switch ma podobne CLI (enable)
+
+show mac-address-table - polecenie pokazaju tablice mac-adressów tego switcha
+
+Na switchach zarządzłnych można było robić wpisy statyczne do tej tablict mac-addressowej, można naprzykład zrobić przypisanie tyłko jednego mac-addresu do jednego portu (inne urządzeni będą nieosiągałne)
+
+Jeżeli na przelącznikach są VLAN, to jeden switch - to jest kiłka switchów (VLAN - jest odcięty od innych VLAN`ów switch)
+Wtedy tablicy mac są lokałne dla każdego VLAN. (Jeden VLAN nie widzi portów innych VLANów. Nie wołno im wysyłać pomiedzy portami różnych VLAN i też to dotyczy broadcastów (broadcast działa tyłko dla porów jednego VLAN))
+
+######### VLAN
+Slużą dla tego żeby odseparować rózne grupy urządzeń. 
+
+Te VLAN mogą być tworzone na różnych poziomach, na MAC adresach, na podstawie addresów IP (Końcowe urządzenie decyduję czy należy do potrzebnego VLAN)
+
+Na CISCO switchach VLAN definiują się na portach
+
+show VLAN (VLAN > 1000 - węwnetrzna komunikacja, nas to nie interesuje) 
+Kiedy odwolujemy się do VLAN to odwolujemy do jego numeru. (Pierwszy VLAN defaultowo nazywa się default)
+Domysłnie wszystkie porty należa do jednego VLAN
+
+conf t
+vlan 10 (10 - numer)
+end - kończy ustawienie tego VLAN`u
+
+jeżeli nie dać nazwy (to VLAN będzie nazywać tak: "VLAN10" - 10 numer)
+
+(config-vlan) name - żeby zmienić nazwe
+
+--------Przypisanie portu do VLAN
+Przez konfiguracje interface`u przypisujemy port do VLAN`u. (Jeżeli nie jest przez nas przypisania, to port jest przypisany do VLAN1 default)
+
+
+Przypisanie jednego interface`u
+/*
+conf t
+interface f0/10
+switchport mode access
+switchport access vlan 10 
+*/
+
+
+Przypisanie grupy portów do vlan (configuracja kilku interfaców)
+/*
+conf t
+interface range f0/11, f0/12, f0/15-17
+(config-if-range)#switchport mode access vlan 10
+exit
+*/
+
+Polączyć 2 switcza 2 kablamy, ale odrazu jeden interface nie podniose sie, bo będzie pętla (spanning-tree zablokuje jeden interface)
+Ale kiedy będą w różnych VLAN`ach, to pętli nie będzie.
+Wadą jest to, że jest potrzebno tyłe polączeń (kabli) ile jest VLANów.
+(To dla trybów access - jeden port do jednego VLAN)
+
+Tryb TRUNK pozwała, że port może być do różnych VLAN`ów, lub wszystkich
+(Jedno polączenie fizyczne dla wszystkich VLAN (domyślnie dla wszystkich)
+
+#switchport mode trunk
+
+Trunk nie jest w żadnem VLAN`ie w tablice (show VLAN)
+
+#show interface trunk - pokazuje wszystkie Tranky.
+(Ctrl-Shift-6)
+
+Trunk automatycznie może być zrobiony trunkiem na drugim switch (porty są w trybie negocjacji (jeżeli jest jeden trunk, a drugi nie jest access, to odrazu będzie trunk)
+Ale nieobwiązkowo.
+
+$####_----Trunk
+Trunk powoduje, żę lącze nie jest zwykłym lączem internetowym, bo lącze trankowe musi wiedzieć z jakiego portu przyśla ramka.
+Obsluga dodatkowego protokolu, zmieniona ramka.
+Ramka jest zmieniana przy wyjściu z jednego switch`a i odwrotnie zmieniana na drugim końcu lącza trankowego i dałej jest wysyłana jako zwykła ramka, bo tyłko switch 100% umie jej obslugiwać.
+
+Jeden protokoł ISL (dopisuje do ramki internetowej info o VLAN, nie jest stosowany)
+
+802.1q - standartny protokól (na naszych switchach, innego nawet nie da się innego robić, na starszych jeszcze można)
+(Zmodyfikowana ramka internetowa)
+
+Switch warstwy 3 lub router - to jedyna opcja, kiedy można polączyć urządzenia różnych VLANów (obowiązkowe jest urządzenie warstwy 3)
+Jeżeli to jest potrebne, to trzeba żeby adresy różnych VLAN`ów muszą mieć adresy innych sieci, bo będą po różnych stronach routera.
+Jeżeli te urządzenia nigdy nie będą komunikować pomiędzy sobą, to można nawet dać jednakowe adresy
+
+Jeżeli w serwerze jest karta sieciowa która wspiera ISL/802.1q można było zrobić by trunk też.
+Lub przez router.
+(Router polączony do różnych VLAN`ów, zaadresować interface`y, ustawic Default GateWay na pc)
+
+To jest robione, żeby na routerze można było zrobić ACL (Access Control List)
+Żeby komputer innego VLAN miał dostęp tyłko do serwera i nie do innych komputerów.
+
+Bez ACl, podział na VLAN has no sense, bo wszystkie komputery mogą komunikować przez router.
+
+
+ERASE NVRAM: 
+
+delete VLAN.DAT
+
+
+###########################	ROUTER ACL	#####################################################
+
+Kiedy pakiet trafia do routera, ROUTER (BEZ ACL):
+- sprawdza sumę kontrolną
+- Sprawdza TTL (Czy nie będzie = 0)
+- Adres IP celu i analiza tablicy routingu, czy posiada ona taki adres ip.
+
+Jeżeli ACL jest wlączony, to jeszcze kiłka sprawdzających procedur.
+
+Mogą być rożne koncepcji podejścia do ACL (n.p. Wszystko dozwolone, zabraniamy przez ACL, Wszystko zabr., my zezwoalamy)
+W Cisco, bez ACL wszystko jest dozwolone, jeżeli stworzymy ACL => wszystko będzie zabronione, i my musimy zezwolić
+
+Lista kontroli dostępu:
+- Zbiór reguł decydujących o zablokowaniu lub przepuszczeniu.
+- Reguły są stosowane  w kolejności występowania na liście. (Dopisywanie reguły towrzy listę) (Każda reguła może być pozwa/zabroniającą, tzn., że jeżeli regula zezwała, to niema różnicy co tam jest dalej w liście)
+- Na końcu jest niejawna reguła blokująca wszystko. (Cisco) (No sense tworzyć wylącznie blokujące reguly, bo i tak wszystko będzie blokowane)
+- Lista jest przypisywana do konkretnego protokolu, interface`u, kierunku ruchu. (Na routerze mogą być wiele list, do momentu jak przypiszemy ich listy do intefacu, protokolu i kierunku)
+
+Na tych routerach możemy mieć kiłka rodzajów list numerowanych:
+1) Listy standardowe (są ubogie, pozwalają filtrować tyłko po adresach żródłowych, dla IP są to listy o numerach 1-99 [ten numer jest nazwą listy])
+2) Listy roszerzone:
+- IP (po adresach żródłowych i adresie docełowych)
+- ICMP
+- TCP
+- UDP
+- dla UDP i TCP (kiedy tak obierzemy) możemy filtrować po porcie żródłowym i porcie docełowym [można ograniczyć dostęp do różnych serwisów np. zablokować telnet, a zezwolić na http)
+
+
