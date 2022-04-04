@@ -351,5 +351,65 @@ Struktura comendy *access-list* dla ACL rozszerzonego:
   - host     A single source host
     - A.B.C.D  Source address
 
+---
+# Wyklad nr. 5 (31.03.2022)
+
+## Router on the Stick
+
+![](podinterfejsy-vlan-5.1.png)
+
+### Ustawianie podinterfejsow
+
+```
+Router(config)# interface f0/0.1
+Router(config-subif)# encapsulation dot1q 1
+Router(config-subif)# ip address <ip> <mask>
+```
+> `dot1q` to jedna z opcji `encapsulation`
+
+### **DTP** - Dynamic Trunking Protocol
+
+Powoduje automatyczne ustawienie trunka po drugiej stronie. Komenda:
+
+```
+Switch# switchport nonegotiate
+```
+
+wyłącza **DTP**.
+
+### Rozpiska komendy `Switch# switchport mode ...`
+
+|Switch_1 > Switch_2 v|Dynamic auto|Dynamic desirable|Trunk|Access|
+|---|---|---|---|---|
+|**Dynamic auto**|Access|Trunk|Trunk|Access|
+|**Dynamic desirable**|Trunk|Trunk|Trunk|Access|
+|**Trunk**|Trunk|Trunk|Trunk|Limited connectivity|
+|**Access**|Access|Access|Limited connectivity|Access|
+
+### **VTP** - Vitual Trunking Protocol
+
+Protokol zarzadzania VLAN'ami (VLAN'y staja sie wspolne)
+
+Ulatwia zarzadzanie VLAN'ami z poziomu jednego switch'a. Dziala tylko przy trunk'ach.
+
+Jezeli zrobimy na jednym switchu to na reszcie zrobi sei samo, reszta dostanie ino o VLAN'ach.
+
+Jak dziala to wszystkie switch'e sa serwerami tego protokolu.
+
+Pokazanie informacji o stanie **VTP**:
+```
+Switch(config)# show vtp status
+```
+
+Serwer pozwala na tworzenie VLAN'ów i zarzadzanie nimi. 
+
+Zmiana na tryb klienta oraz przydzielenie domeny:
+```
+Switch(config)# vtp mode client
+Switch(config)# ctp domain <nazwa_domeny>
+```
+
+---
+# Wyklad nr. 6 (07.04.2022)
 
 
