@@ -406,10 +406,53 @@ Serwer pozwala na tworzenie VLAN'ów i zarzadzanie nimi.
 Zmiana na tryb klienta oraz przydzielenie domeny:
 ```
 Switch(config)# vtp mode client
-Switch(config)# ctp domain <nazwa_domeny>
+Switch(config)# vtp domain <nazwa_domeny>
 ```
 
 ---
 # Wyklad nr. 6 (07.04.2022)
+
+## Minimalne drzewo rozpinajace (minimal spanning tree)
+
+![](1200px-Minimum_spanning_tree.svg.png)
+
+## Protokol spanning tree (STP)
+
+Protokol ten zapobiega tworzeniu sie petli w sieciach (zaklada sie VLAN'y, Switche, Routery i inne urzadzenia sieciowe - w przypadku VLAN'ow STP musi byc swiadomy tego ze dane VLAN'y istnieja).
+
+Wylaczenie STP na Switchu:
+```
+Switch# conf t
+Switch(config)# no spanning-tree vlan 1 
+```
+
+Kiedy wylaczymy protokol STP w sieci w ktorej wystepuje petla pojawiaja sie 3 problemy:
+- **burza rozgloszeniowa** - jezeli pojawi sie jakis komunikat, ramka, to switch wysyla dany bradcast wszedzie, rowniez tez do dwoch pozostalych switchy, tworzac burze rozgloszeniowa (**PC0** nie posiada **MAC** addressu **PC2** wiec w ramce brak informacji o adresie **MAC**, stad bierze sie broadcast bo trzeba wyslac przez **ARP** zapytanie o **MAC** address odbiorcy requestu `ping`)
+- **niestabilnosc tablic adresow MAC** - tablice **MAC** na switchach nie bede pelnic w pelni swojej funkcji, requesty beda wysylane ciagle i ciagle, przez to, ze ping bedzie wysylany brodcastem przez inne switche
+- **kopia ramek u celu** - **PC2** dostanie wiele ramek o tej samej zawartosci 
+
+## Algorytm STA (spanning tree algorythm)
+
+STA rozwiazuje problem petli w sieci (miedzy przelacznikami czy routerami). Przy kazdym nowym kablu podlaczonym pod switch, STA sprawdza czy polaczenie to nie stworzy petli, stad tak dlugi okres oczekiwania na podniesienie lacza na switchach korzystajacych z STP.
+
+## Dzialanie porotokolu STP
+
+Pokazanie aktualnego drzewa **BID** oraz drzewa rozpinajacego w danej sieci
+```
+Switch# show spanning-tree
+```
+
+**BPDU (Bridge Protocol Data Unit)** - Jednostki danych protokołu mostu to ramki zawierające informacje o protokole drzewa spinającego. Switch wysyła jednostki BPDU przy użyciu unikalnego źródłowego adresu MAC ze swojego portu źródłowego do adresu multiemisji z docelowym adresem MAC. 
+
+Ramki **BPDU** sa wysylane do wszystkich polaczen z danego portu na switchu i jezeli ramka **BPDU** nie wroci do niego, to wtedy petla nie istnieje, co podwoduje podniesienie portu. **BPDU** s ronwiez wysylane pozniej, juz po podnieseiniu portu.
+
+**BID (Bridge ID)** - sklada sie z (im nizsza wartosc tym wyzszy priorytet, wartosc 0 to najwyzszy priorytet):
+- priorytetu mostu - by default switche maja 32769
+- rozszerzonego id systemu - id systemu
+- adresu MAC switcha - im nizszy MAC address tym wyzszy priorytet
+
+Po ustaleniu hierarchii switchy za pomoca **BID** ustala sie hierarchie portow wedlug ponizszej tabeli:
+
+![](stp_connection_costs.png)
 
 
